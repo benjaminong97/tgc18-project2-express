@@ -156,49 +156,73 @@ async function main() {
     app.get("/outfit/search", async (req,res) => {
         let criteria = {}
         
-
+        //search by names
         if (req.query.category === "title" || req.query.category ==="contributor") {
+
             criteria[req.query.category] = {$regex: req.query["query"], $options : "i"}
-            let results = await db.collection("outfits").find(criteria).toArray();
-            res.status(200);
-            res.send(results)
+            
+            
         }
         else if (req.query.category === "top") {
-            let cat = req.query.category
-            let catName = req.query.querycatname
-            let question = req.query.query
-            // criteria[cat] = [catName]
-            // criteria.cat[catName] = {$regex: question, $options: "i"}
-            
-            // criteria[cat] = {[catName] : {$regex: question, $options: "i"}}
-            // console.log(criteria)
+            criteria['top.topName'] = {$regex: req.query["query"], $options : "i"}
             
 
             
-            let results = await db.collection("outfits").find({
-                "top.topName":{$regex: req.query["query"], $options : "i"}
+            // let results = await db.collection("outfits").find({
+            //     "top.topName":{$regex: req.query["query"], $options : "i"}
                 
-            }).toArray()
-            console.log(results)
-            res.status(200)
-            res.send(results)
+            // }).toArray()
+            // console.log(results)
+            // res.status(200)
+            // res.send(results)
         }
         else if (req.query.category === "bottom") {
-            let results = await db.collection("outfits").find({
-                "bottom.bottomName":{$regex: req.query["query"], $options : "i"}
-                
-            }).toArray()
-            res.status(200)
-            res.send(results)
+            criteria['bottom.bottomName'] = {$regex: req.query["query"], $options : "i"}
+
         }
         else if (req.query.category === "shoes") {
-            let results = await db.collection("outfits").find({
-                "bottom.bottomName":{$regex: req.query["query"], $options : "i"}
-                
-            }).toArray()
-            res.status(200)
-            res.send(results)
+            criteria['shoes.shoesName'] = {$regex: req.query["query"], $options : "i"}
+            
         }
+        
+        //filter by tags
+        if (req.query.tag) {
+            if (typeof req.query.tag === 'string'){
+                criteria['tags'] = req.query.tag
+            } else if (req.query.tag.length > 1){
+                
+                criteria['tags'] = {$all: req.query.tag}
+            
+        }}
+
+        //filter by price range
+        if (req.query.pricecat === "total") {
+            let priceObject = {}
+            if (req.query.minimum) {
+                priceObject["$gte"] = Number(req.query.minimum)
+            }
+            if (req.query.maximum) {
+                priceObject["$lte"] = Number(req.query.maximum)
+            }
+            criteria['total'] = priceObject
+
+        } else if (req.query.pricecat === "none") {
+            //do nothing
+        } else {
+            let priceObject = {}
+            if (req.query.minimum) {
+                priceObject["$gte"] = Number(req.query.minimum)
+            }
+            if (req.query.maximum) {
+                priceObject["$lte"] = Number(req.query.maximum)
+            }
+            criteria[`${req.query.pricecat}.${req.query.pricecat}Cost`] = priceObject
+        }
+
+        console.log(criteria)
+        let results = await db.collection("outfits").find(criteria).toArray()
+        res.status(200)
+        res.send(results)
 
        
     })
@@ -295,6 +319,6 @@ main()
 
 
 
-app.listen(3000, () => {
+app.listen(process.env.PORT, () => {
     console.log("server has started")
 })
